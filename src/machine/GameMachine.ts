@@ -1,4 +1,3 @@
-import { createMachine } from "xstate";
 import { createModel } from "xstate/lib/model";
 import { GridState, Player } from "../types";
 
@@ -23,10 +22,15 @@ export const GameModel = createModel({
     ] as GridState
 },{
     events:{
-        join: (playerId: Player["id"], name: Player["name"]) => ({playerId, name})
+        join: (playerId: Player["id"], name: Player["name"]) => ({playerId, name}),
+        leave: (playerId: Player["id"]) => ({playerId}),
+        chooseColor: (playerId: Player["id"], color: Player["color"]) => ({playerId, color}),
+        start: (playerId:Player["id"]) => ({playerId}),
+        dropToken: (playerId: Player["id"], x: number) => ({playerId, x}),
+        restart: () =>({})
     }
 })
-export const GameMachine = createMachine({
+export const GameMachine = GameModel.createMachine({
     id:'game',
     initial: GameStates.LOBBY,
     states:{
