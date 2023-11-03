@@ -1,12 +1,8 @@
 import { createModel } from "xstate/lib/model";
-import { GridState, Player } from "../types";
-
-enum GameStates  {
-    LOBBY = 'LOBBY', //player are waiting
-    PLAY = 'PLAY',
-    VICTORY = 'VICTORY',
-    DRAW = 'DRAW',
-}
+import { GameContext, GameStates, GridState, Player } from "../types";
+import { canChooseColorGuard, canJoinGuard, canLeaveGuard, canStartGameGuard } from "./guards";
+import { joinGameAction, leaveGameAction } from "./actions";
+import { InterpreterFrom, interpret } from "xstate";
 
 export const GameModel = createModel({
     players:[] as Player[],
@@ -30,26 +26,34 @@ export const GameModel = createModel({
         restart: () =>({})
     }
 })
+//Use GameMachine from GameModel help to type authomatical the machine
 export const GameMachine = GameModel.createMachine({
     id:'game',
+    context:GameModel.initialContext,
     initial: GameStates.LOBBY,
     states:{
         [GameStates.LOBBY]:{
             on:{
                 //join a game
                 join:{
+                    cond:canJoinGuard,
+                    actions: [GameModel.assign(joinGameAction)],
                     target: GameStates.LOBBY
                 },
                 //leave a party
                 leave:{
+                    cond:canLeaveGuard,
+                    actions: [GameModel.assign(leaveGameAction)],
                     target: GameStates.LOBBY
                 },
                 //choose a color
                 chooseColor:{
+                    cond:canChooseColorGuard,
                     target: GameStates.LOBBY
                 },
                 //start a game
                 start: {
+                    cond:canStartGameGuard,
                     target: GameStates.PLAY
                 }
             }
@@ -57,7 +61,7 @@ export const GameMachine = GameModel.createMachine({
         [GameStates.PLAY]:{
             on:{
                 dropToken:{
-                    //target: '????'
+                    target: GameStates.VICTORY,
                 }
             },
         },
@@ -77,3 +81,16 @@ export const GameMachine = GameModel.createMachine({
         }
     }
 })
+
+//function to generate a Machine in a specific state
+export const makeGame = (state:GameStates = GameStates.LOBBY, context: Partial<GameContext>= {}):InterpreterFrom<typeof GameMachine> =>{
+    return interpret(
+        GameMachine.withContext({
+            ...GameModel.initialContext,
+            ...context
+        }).withConfig({
+            ...GameMachine.config,
+            initial:state,
+        })
+        ).start()
+}
