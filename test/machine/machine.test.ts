@@ -1,15 +1,14 @@
 import { GameMachine, GameModel, makeGame } from './../../src/machine/GameMachine';
 import {beforeEach, describe, it, expect} from 'vitest'
 import { InterpreterFrom, interpret } from 'xstate'
-import { GameContext, GameStates, PlayerColor } from '../../src/types';
-import { canDropGuard } from '../../src/machine/guards';
+import {  GameStates, PlayerColor } from '../../src/types';
 
 describe("machine/GameMachine", () => {
 
     describe("join", () => {
         let machine: InterpreterFrom<typeof GameMachine>
 
-        //reinitializ the machine before each test
+        //reinitialize the machine before each test
         beforeEach(() => {
             machine = interpret(GameMachine).start()
         })
@@ -31,6 +30,7 @@ describe("machine/GameMachine", () => {
     })
 
     describe("dropToken", () => {
+        //initially the machine has to be on state PLAY
         const machine = makeGame(GameStates.PLAY,{
            players:[{
                 id:'1',
@@ -54,9 +54,23 @@ describe("machine/GameMachine", () => {
 
 
 
-        it("should let me drop a function",() => {
+        it("it should let me drop a token",() => {
+            //Test le changement d'etat quand on drop un token
             expect(machine.send(GameModel.events.dropToken("1",0)).changed).toBe(true)
-            expect(machine.state.context.grid[5][0]).toBe(PlayerColor.RED)
+            //Test l'etat final de la grille pour voir si a l'endroit du drop le bon pion est present
+            expect(machine.getSnapshot().context.grid[5][0]).toBe(PlayerColor.RED)
+            //
+            expect(machine.getSnapshot().context.currentPlayer).toBe("2")
+        })
+        it("it should not let me drop the token on a filled colums",() => {
+
+            //Test le changement d'etat quand on drop un token
+            expect(machine.send(GameModel.events.dropToken("1",6)).changed).toBe(false)
+
+        })
+        it("it should make me win",() => {
+            expect(machine.send(GameModel.events.dropToken("1",5)).changed).toBe(true)
+            expect(machine.getSnapshot().value).toBe(GameStates.VICTORY)
 
         })
     })

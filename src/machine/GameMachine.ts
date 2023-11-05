@@ -1,7 +1,7 @@
 import { createModel } from "xstate/lib/model";
 import { GameContext, GameStates, GridState, Player } from "../types";
-import { canChooseColorGuard, canJoinGuard, canLeaveGuard, canStartGameGuard } from "./guards";
-import { joinGameAction, leaveGameAction } from "./actions";
+import { canChooseColorGuard, canDropTokenGuard, canJoinGuard, canLeaveGuard, canStartGameGuard } from "./guards";
+import { dropTokenAction, joinGameAction, leaveGameAction, switchPlayerAction } from "./actions";
 import { InterpreterFrom, interpret } from "xstate";
 
 export const GameModel = createModel({
@@ -42,8 +42,8 @@ export const GameMachine = GameModel.createMachine({
                 },
                 //leave a party
                 leave:{
-                    cond:canLeaveGuard,
-                    actions: [GameModel.assign(leaveGameAction)],
+                    cond: canLeaveGuard,
+                    actions:[GameModel.assign(leaveGameAction)],
                     target: GameStates.LOBBY
                 },
                 //choose a color
@@ -61,7 +61,9 @@ export const GameMachine = GameModel.createMachine({
         [GameStates.PLAY]:{
             on:{
                 dropToken:{
-                    target: GameStates.VICTORY,
+                    cond: canDropTokenGuard,
+                    target: GameStates.PLAY,
+                    actions:[GameModel.assign(dropTokenAction), GameModel.assign(switchPlayerAction)],
                 }
             },
         },
@@ -84,13 +86,12 @@ export const GameMachine = GameModel.createMachine({
 
 //function to generate a Machine in a specific state
 export const makeGame = (state:GameStates = GameStates.LOBBY, context: Partial<GameContext>= {}):InterpreterFrom<typeof GameMachine> =>{
-    return interpret(
+    const machine = interpret(
         GameMachine.withContext({
             ...GameModel.initialContext,
             ...context
-        }).withConfig({
-            ...GameMachine.config,
-            initial:state,
-        })
-        ).start()
+        })).start()
+        //Modify the machine state à la volé
+        machine.state.value = state
+        return machine
 }
