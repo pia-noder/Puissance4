@@ -30,8 +30,12 @@ describe("machine/GameMachine", () => {
     })
 
     describe("dropToken", () => {
+
+        let machine: InterpreterFrom<typeof GameMachine>
+
         //initially the machine has to be on state PLAY
-        const machine = makeGame(GameStates.PLAY,{
+        beforeEach(() => {
+            machine = makeGame(GameStates.PLAY,{
            players:[{
                 id:'1',
                 name:'1',
@@ -50,7 +54,9 @@ describe("machine/GameMachine", () => {
                 ["E","E","E","E","E","Y","Y"],
                 ["E","E","E","E","E","Y","R"],
             ] 
+        }) 
         })
+       
 
 
 
@@ -71,7 +77,23 @@ describe("machine/GameMachine", () => {
         it("it should make me win",() => {
             expect(machine.send(GameModel.events.dropToken("1",5)).changed).toBe(true)
             expect(machine.getSnapshot().value).toBe(GameStates.VICTORY)
+            expect(machine.getSnapshot().context.winingPositions).toHaveLength(4)
 
+        })
+        it("it should handle draw", () => {
+            machine = makeGame(GameStates.PLAY, {
+                ...machine.getSnapshot().context,
+                grid:[
+                    ["E","Y","Y","Y","Y","Y","R"],
+                    ["Y","Y","Y","Y","Y","R","Y"],
+                    ["Y","Y","Y","Y","Y","R","R"],
+                    ["Y","Y","Y","Y","Y","R","R"],
+                    ["Y","Y","Y","Y","Y","Y","Y"],
+                    ["Y","Y","Y","Y","Y","Y","R"],
+                ] 
+            })
+            expect(machine.send(GameModel.events.dropToken("1",0)).changed).toBe(true)
+            expect(machine.getSnapshot().value).toBe(GameStates.DRAW)
         })
     })
 })
