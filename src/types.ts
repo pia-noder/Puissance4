@@ -5,6 +5,12 @@ export enum PlayerColor {
     RED = 'R',
     YELLOW = 'Y'
 }
+
+export type Position = {
+    x:number,
+    y:number
+}
+
 export enum GameStates  {
     LOBBY = 'LOBBY', //player are waiting
     PLAY = 'PLAY',

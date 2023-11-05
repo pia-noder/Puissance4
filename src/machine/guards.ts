@@ -1,6 +1,6 @@
 //Guards are functions that block some transitions according some condition
 import {GameGuard, PlayerColor } from "../types";
-import { freePositionY } from "../utils/game";
+import { currentPlayer, freePositionY, winingPositions, countEmptyCells } from "../utils/game";
 
 export const canJoinGuard: GameGuard<"join"> = (context, event) => {
     return context.players.length < 2 && context.players.find(player => player.id === event.playerId) === undefined
@@ -20,4 +20,17 @@ export const canStartGameGuard: GameGuard<"start"> = (context) => {
 
 export const canDropTokenGuard: GameGuard<"dropToken"> = (context, event) => {
     return event.x < context.grid[0].length && event.x >= 0 && context.currentPlayer === event.playerId && freePositionY(context.grid, event.x) >= 0
+}
+
+export const isWinningMoveGuard: GameGuard<"dropToken"> =  (context, event) => {
+    return canDropTokenGuard(context,event) && winingPositions(
+        context.grid,
+        currentPlayer(context).color!,
+        event.x,
+        context.rowLength
+    ).length > 0
+}
+
+export const isDrawMoveGuard: GameGuard<"dropToken"> = (context, event) => {
+    return canDropTokenGuard(context, event) && countEmptyCells(context.grid) <= 1
 }

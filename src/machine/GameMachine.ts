@@ -1,13 +1,14 @@
 import { createModel } from "xstate/lib/model";
-import { GameContext, GameStates, GridState, Player } from "../types";
-import { canChooseColorGuard, canDropTokenGuard, canJoinGuard, canLeaveGuard, canStartGameGuard } from "./guards";
-import { dropTokenAction, joinGameAction, leaveGameAction, switchPlayerAction } from "./actions";
+import { GameContext, GameStates, GridState, Player, Position } from "../types";
+import { canChooseColorGuard, canDropTokenGuard, canJoinGuard, canLeaveGuard, canStartGameGuard, isDrawMoveGuard, isWinningMoveGuard } from "./guards";
+import { chooseColorAction, dropTokenAction, joinGameAction, leaveGameAction, restartAction, saveWinningPositionAction, setCurrentPlayerAction, switchPlayerAction } from "./actions";
 import { InterpreterFrom, interpret } from "xstate";
 
 export const GameModel = createModel({
     players:[] as Player[],
     currentPlayer: null as null | Player['id'],
     rowLength:4,
+    winingPositions:[] as Position[],
     grid: [
         ["E","E","E","E","E","E","E"],
         ["E","E","E","E","E","E","E"],
@@ -49,35 +50,56 @@ export const GameMachine = GameModel.createMachine({
                 //choose a color
                 chooseColor:{
                     cond:canChooseColorGuard,
-                    target: GameStates.LOBBY
+                    target: GameStates.LOBBY,
+                    actions:[GameModel.assign(chooseColorAction)]
                 },
                 //start a game
                 start: {
                     cond:canStartGameGuard,
-                    target: GameStates.PLAY
+                    target: GameStates.PLAY,
+                    actions:[GameModel.assign(setCurrentPlayerAction)]
                 }
             }
         },
         [GameStates.PLAY]:{
+            after:{
+                20000:{
+                    target:GameStates.PLAY,
+                    actions:[GameModel.assign(switchPlayerAction)]
+                }
+            },
             on:{
-                dropToken:{
+                dropToken:[
+                    {
+                        cond: isDrawMoveGuard,
+                        target:GameStates.DRAW,
+                        actions:[GameModel.assign(dropTokenAction) ]
+                    },
+                    {
+                        cond: isWinningMoveGuard,
+                        target:GameStates.VICTORY,
+                        actions:[GameModel.assign(saveWinningPositionAction),GameModel.assign(dropTokenAction) ]
+                    },
+                    {
                     cond: canDropTokenGuard,
                     target: GameStates.PLAY,
                     actions:[GameModel.assign(dropTokenAction), GameModel.assign(switchPlayerAction)],
-                }
+                }]
             },
         },
         [GameStates.VICTORY]:{
             on:{
                 restart:{
-                    target: GameStates.LOBBY
+                    target: GameStates.LOBBY,
+                    actions:[GameModel.assign(restartAction)]
                 }
             },
         },
         [GameStates.DRAW]:{
             on:{
                 restart:{
-                    target: GameStates.LOBBY
+                    target: GameStates.LOBBY,
+                    actions:[GameModel.assign(restartAction)]
                 }
             },
         }
